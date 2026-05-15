@@ -174,3 +174,7 @@ elif st.session_state.step == 3:
         st.session_state.final_sheet = ""
         st.session_state.user_initial_input = ""
         st.rerun()
+
+# --- ポータルサイトへ戻るボタン ---
+st.markdown("---")
+st.link_button("🏠 C.HARIGOMA キャリア支援ポータルへ戻る", "https://harigoma-career.streamlit.app/")

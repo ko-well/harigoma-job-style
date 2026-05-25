@@ -49,7 +49,7 @@ if st.session_state.step == 1:
     
     with tab1:
         period_1 = st.text_input("在籍期間（例：約3年，半年など）", key="p1")
-        job_card_1 = st.text_area("ジョブカードの「職務内容」「学んだこと・知識技術等」を貼り付けてください", height=150, key="j1")
+        job_description = st.text_area("様式２ 職務経歴シートの「職務内容」「学んだこと・知識技術等」のテキストをコピーして貼り付けてください")
         hardship_1 = st.text_area("一番苦労したこと・工夫したこと（任意）", placeholder="失敗から立て直した経験なども立派な素材になります！", key="h1")
     with tab2:
         period_2 = st.text_input("在籍期間（例：約2年など）", key="p2")

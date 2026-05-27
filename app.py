@@ -54,19 +54,16 @@ if st.session_state.step == 0:
         age = st.radio("年代をお教えください", ["20代", "30代", "40代", "50代以上"], horizontal=True)
         status = st.radio("現在の転職への温度感は？", ["限界が近く、今すぐ環境を変えたい", "じっくり次のステップを考えたい", "良いところがあれば検討したい"], horizontal=True)
         
+        # 修正箇所：常に自由入力欄を表示させておくことで、文字消えバグを防ぐ
         trigger_choice = st.selectbox("今回の就職活動で「一番変えたいこと（引き金）」は何ですか？", 
                                ["職場の人間関係・対人ストレスを減らしたい", 
                                 "仕事内容が自分に合わない（環境を変えたい）", 
                                 "体力的な負担を減らしたい", 
                                 "勤務時間や休日などの条件を改善したい",
-                                "その他（自由に入力する）"])
+                                "その他（下の欄に自由に入力する）"])
         
-        if trigger_choice == "その他（自由に入力する）":
-            trigger = st.text_input("一番変えたいことを自由に入力してください", placeholder="例：給与を上げたい、正社員になりたい など")
-        else:
-            trigger = trigger_choice
+        trigger_free = st.text_input("👆上の質問で「その他」を選んだ方は、一番変えたいことを自由に入力してください", placeholder="例：給与を上げたい、正社員になりたい など")
 
-        # 変更点：選択肢の下に、職種の自由入力欄を追加
         experiences = st.multiselect("これまでに経験したことのある職種（大まかな分類・複数選択可）", 
                                      ["接客・販売・サービス職", 
                                       "飲食・フード・調理職",
@@ -86,18 +83,25 @@ if st.session_state.step == 0:
         submit_profile = st.form_submit_button("次へ進む（業務シチュエーションの準備） 👉")
         
     if submit_profile:
-        # 選択されたものと自由入力の結合処理
+        # trigger（引き金）の決定
+        if trigger_choice == "その他（下の欄に自由に入力する）":
+            trigger = trigger_free
+        else:
+            trigger = trigger_choice
+            
+        # 経験職種の結合処理
         exp_list = experiences.copy()
         if free_experience:
             exp_list.append(free_experience)
         combined_experiences = "、".join(exp_list)
 
+        # エラーチェック
         if not api_key:
             st.error("⚠️ 左側のメニューにAPIキーを入力してください。")
         elif not combined_experiences:
             st.warning("⚠️ 経験職種を選択するか、自由入力欄に入力してください。")
-        elif trigger_choice == "その他（自由に入力する）" and not trigger:
-            st.warning("⚠️ 自由入力欄に、一番変えたいことを入力してください。")
+        elif trigger_choice == "その他（下の欄に自由に入力する）" and not trigger:
+            st.warning("⚠️ 「その他」を選んだ方は、すぐ下の自由入力欄に一番変えたいことを入力してください。")
         else:
             st.session_state.profile = {"age": age, "status": status, "trigger": trigger, "experiences": combined_experiences}
             
@@ -228,7 +232,7 @@ elif st.session_state.step == 2:
         その伏せられた仕事の、朝出社してから夕方退社するまでの業務の流れを、物語のように描写してください。その際、本人が希望するスキルや知識を「どの場面で、どのように使うのか」を具体的にイメージできるように描写に組み込んでください。最後に、必ず「[TARGET_JOB:ここに裏で想定した具体的な職種名を書く]」という形式の一行を【文章の最末尾】にハイドデータとして付与してください。画面には表示させない処理をします。
         
         【超重要：地方の現実に基づくこと】
-        提案する仕事は、東京のIT企業やフルリモートワークなどではなく、「新潟市周辺の産業構造」に実際に存在する、マイカー通勤が想定される現実的な仕事（例：食品製造・水産加工の品質チェック・データ管理、地場卸売のバックオフィス、物流倉庫の出荷・配車データ入力アシスタントなど）から選定し、泥臭くても手堅い業務内容を描写してください。
+        提案する仕事は、東京のIT企業やフルリモートワークなどではなく、「新潟市周辺の産業構造」に実際に存在する、マイカー通勤が想定される現実的な仕事（例：食品製造・水産加工の品質チェック・データ管理、地場卸売のバックオフィス、物流倉庫の出荷・配車データ入力アシ最初からタントなど）から選定し、泥臭くても手堅い業務内容を描写してください。
         """
         
         with st.spinner("⏳ AIコンサルタントがあなたの本音を分析し、あなたに一番安心な働き方のストーリーを紡いでいます。10秒ほどお待ちください..."):

@@ -54,7 +54,6 @@ if st.session_state.step == 0:
         age = st.radio("年代をお教えください", ["20代", "30代", "40代", "50代以上"], horizontal=True)
         status = st.radio("現在の転職への温度感は？", ["限界が近く、今すぐ環境を変えたい", "じっくり次のステップを考えたい", "良いところがあれば検討したい"], horizontal=True)
         
-        # 修正箇所：常に自由入力欄を表示させておくことで、文字消えバグを防ぐ
         trigger_choice = st.selectbox("今回の就職活動で「一番変えたいこと（引き金）」は何ですか？", 
                                ["職場の人間関係・対人ストレスを減らしたい", 
                                 "仕事内容が自分に合わない（環境を変えたい）", 
@@ -83,19 +82,16 @@ if st.session_state.step == 0:
         submit_profile = st.form_submit_button("次へ進む（業務シチュエーションの準備） 👉")
         
     if submit_profile:
-        # trigger（引き金）の決定
         if trigger_choice == "その他（下の欄に自由に入力する）":
             trigger = trigger_free
         else:
             trigger = trigger_choice
             
-        # 経験職種の結合処理
         exp_list = experiences.copy()
         if free_experience:
             exp_list.append(free_experience)
         combined_experiences = "、".join(exp_list)
 
-        # エラーチェック
         if not api_key:
             st.error("⚠️ 左側のメニューにAPIキーを入力してください。")
         elif not combined_experiences:
@@ -139,21 +135,24 @@ elif st.session_state.step == 1:
     st.markdown("<div class='step-header'><h3>Step 1：仕事の場面仕分け（これだけは避けたいこと）</h3></div>", unsafe_allow_html=True)
     st.write("提示されるシチュエーションについて、あなたの本音で仕分けてください。「これが毎日続いたらきついな」と思うものを探します。")
     
+    # --- 変更箇所：3択への変更と、初期値を「普通（index=1）」に設定 ---
+    options_3way = ["😄 好き・得意", "😐 普通・気にならない", "😫 正直しんどい・避けたい"]
+
     with st.form("sorting_form"):
         st.subheader("👥 A. 人と関わる場面")
         for idx, sit in enumerate(st.session_state.situations.get("A", [])):
             st.markdown(f"<div class='card-box'>📋 {sit}</div>", unsafe_allow_html=True)
-            st.session_state.evaluations[f"A_{idx}"] = st.radio("この場面への気持ちは？", ["😊 苦にならない・普通", "😫 正直しんどい・避けたい"], key=f"ans_A_{idx}", horizontal=True)
+            st.session_state.evaluations[f"A_{idx}"] = st.radio("この場面への気持ちは？", options_3way, index=1, key=f"ans_A_{idx}", horizontal=True)
         
         st.subheader("📊 B. 作業・ルールの場面")
         for idx, sit in enumerate(st.session_state.situations.get("B", [])):
             st.markdown(f"<div class='card-box'>📋 {sit}</div>", unsafe_allow_html=True)
-            st.session_state.evaluations[f"B_{idx}"] = st.radio("この場面への気持ちは？", ["😊 苦にならない・普通", "😫 正直しんどい・避けたい"], key=f"ans_B_{idx}", horizontal=True)
+            st.session_state.evaluations[f"B_{idx}"] = st.radio("この場面への気持ちは？", options_3way, index=1, key=f"ans_B_{idx}", horizontal=True)
             
         st.subheader("⏰ C. 環境・ペースの場面")
         for idx, sit in enumerate(st.session_state.situations.get("C", [])):
             st.markdown(f"<div class='card-box'>📋 {sit}</div>", unsafe_allow_html=True)
-            st.session_state.evaluations[f"C_{idx}"] = st.radio("この場面への気持ちは？", ["😊 苦にならない・普通", "😫 正直しんどい・避けたい"], key=f"ans_C_{idx}", horizontal=True)
+            st.session_state.evaluations[f"C_{idx}"] = st.radio("この場面への気持ちは？", options_3way, index=1, key=f"ans_C_{idx}", horizontal=True)
             
         submit_step1 = st.form_submit_button("仕分けを完了して、絶対NGの選定へ ➔")
 
@@ -168,6 +167,7 @@ elif st.session_state.step == 2:
     st.progress(0.4)
     st.markdown("<div class='step-header'><h3>Step 2：絶対に避けたい「NG項目」と「未来への希望」</h3></div>", unsafe_allow_html=True)
     
+    # "😫"が含まれる選択肢（しんどい）を選んだものだけを抽出する処理
     ng_pool = []
     for key, val in st.session_state.evaluations.items():
         if "😫" in val:
@@ -232,7 +232,7 @@ elif st.session_state.step == 2:
         その伏せられた仕事の、朝出社してから夕方退社するまでの業務の流れを、物語のように描写してください。その際、本人が希望するスキルや知識を「どの場面で、どのように使うのか」を具体的にイメージできるように描写に組み込んでください。最後に、必ず「[TARGET_JOB:ここに裏で想定した具体的な職種名を書く]」という形式の一行を【文章の最末尾】にハイドデータとして付与してください。画面には表示させない処理をします。
         
         【超重要：地方の現実に基づくこと】
-        提案する仕事は、東京のIT企業やフルリモートワークなどではなく、「新潟市周辺の産業構造」に実際に存在する、マイカー通勤が想定される現実的な仕事（例：食品製造・水産加工の品質チェック・データ管理、地場卸売のバックオフィス、物流倉庫の出荷・配車データ入力アシ最初からタントなど）から選定し、泥臭くても手堅い業務内容を描写してください。
+        提案する仕事は、東京のIT企業やフルリモートワークなどではなく、「新潟市周辺の産業構造」に実際に存在する、マイカー通勤が想定される現実的な仕事（例：食品製造・水産加工の品質チェック・データ管理、地場卸売のバックオフィス、物流倉庫の出荷・配車データ入力アシスタントなど）から選定し、泥臭くても手堅い業務内容を描写してください。
         """
         
         with st.spinner("⏳ AIコンサルタントがあなたの本音を分析し、あなたに一番安心な働き方のストーリーを紡いでいます。10秒ほどお待ちください..."):

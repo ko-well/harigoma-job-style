@@ -5,7 +5,7 @@ import json
 # --- ページ設定 ---
 st.set_page_config(page_title="本音でみつかる！仕事のリアル疑似体験アシスタント", layout="wide")
 
-# --- カスタムCSS（C.HARIGOMAブランドのトーンに合わせた親しみやすいデザイン） ---
+# --- カスタムCSS ---
 st.markdown("""
 <style>
 h1, h2, h3 { color: #2C3E50 !important; }
@@ -17,8 +17,8 @@ h1, h2, h3 { color: #2C3E50 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🧩 本音でみつかる！仕事のリアル疑似体験アシスタント")
-st.write("「職種名」の先入観を一度外して、あなたに本当に合った安心できる働き方（状態）をAIと一緒に見つけましょう。")
+st.title("🧩 自己理解から仕事理解へ：わたしに合う働き方発見アシスタント")
+st.write("「事務職がいい」「あの仕事は嫌だ」といった職種名の先入観を一度外して、あなたが本当に安心できる働き方（環境）をAIと一緒に見つけましょう。")
 st.markdown("---")
 
 # --- APIキー設定 ---
@@ -53,22 +53,54 @@ if st.session_state.step == 0:
     with st.form("profile_form"):
         age = st.radio("年代をお教えください", ["20代", "30代", "40代", "50代以上"], horizontal=True)
         status = st.radio("現在の転職への温度感は？", ["限界が近く、今すぐ環境を変えたい", "じっくり次のステップを考えたい", "良いところがあれば検討したい"], horizontal=True)
-        trigger = st.selectbox("今回の就職活動で「一番変えたいこと（引き金）」は何ですか？", 
-                               ["職場の人間関係・対人ストレスを減らしたい", "仕事内容が自分に合わない（環境を変えたい）", "体力的な負担を減らしたい", "勤務時間や休日などの条件を改善したい"])
-        experiences = st.multiselect("これまでに経験したことのある職種（近いもので可・複数選択可）", 
-                                     ["接客・販売・サービス職", "営業・企画職", "一般事務・受付・アシスタント職", "製造・工場・軽作業職", "医療・福祉・介護職", "その他"])
+        
+        trigger_choice = st.selectbox("今回の就職活動で「一番変えたいこと（引き金）」は何ですか？", 
+                               ["職場の人間関係・対人ストレスを減らしたい", 
+                                "仕事内容が自分に合わない（環境を変えたい）", 
+                                "体力的な負担を減らしたい", 
+                                "勤務時間や休日などの条件を改善したい",
+                                "その他（自由に入力する）"])
+        
+        if trigger_choice == "その他（自由に入力する）":
+            trigger = st.text_input("一番変えたいことを自由に入力してください", placeholder="例：給与を上げたい、正社員になりたい など")
+        else:
+            trigger = trigger_choice
+
+        # 変更点：選択肢の下に、職種の自由入力欄を追加
+        experiences = st.multiselect("これまでに経験したことのある職種（大まかな分類・複数選択可）", 
+                                     ["接客・販売・サービス職", 
+                                      "飲食・フード・調理職",
+                                      "営業・企画職", 
+                                      "一般事務・受付・アシスタント職", 
+                                      "総務・経理・人事などのバックオフィス職",
+                                      "製造・工場・ライン作業", 
+                                      "物流・倉庫・ドライバー",
+                                      "清掃・警備・施設管理",
+                                      "医療・看護・福祉・介護職", 
+                                      "IT・エンジニア・Web・クリエイティブ職",
+                                      "その他"])
+        
+        free_experience = st.text_input("上記にない職種や、より具体的な職種名があれば自由に入力してください", 
+                                        placeholder="例：職業訓練の講師、アパレルの店長、コールセンター、など")
         
         submit_profile = st.form_submit_button("次へ進む（業務シチュエーションの準備） 👉")
         
     if submit_profile:
+        # 選択されたものと自由入力の結合処理
+        exp_list = experiences.copy()
+        if free_experience:
+            exp_list.append(free_experience)
+        combined_experiences = "、".join(exp_list)
+
         if not api_key:
             st.error("⚠️ 左側のメニューにAPIキーを入力してください。")
-        elif not experiences:
-            st.warning("⚠️ 経験したことのある職種を1つ以上選択してください。")
+        elif not combined_experiences:
+            st.warning("⚠️ 経験職種を選択するか、自由入力欄に入力してください。")
+        elif trigger_choice == "その他（自由に入力する）" and not trigger:
+            st.warning("⚠️ 自由入力欄に、一番変えたいことを入力してください。")
         else:
-            st.session_state.profile = {"age": age, "status": status, "trigger": trigger, "experiences": ", ".join(experiences)}
+            st.session_state.profile = {"age": age, "status": status, "trigger": trigger, "experiences": combined_experiences}
             
-            # --- APIを呼び出して、経験に合わせた業務シチュエーション（NGカード）を動的生成 ---
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel('gemini-2.5-flash')
             
@@ -88,7 +120,6 @@ if st.session_state.step == 0:
             with st.spinner("あなたの経験に合わせて、シチュエーションカードを作成しています..."):
                 try:
                     response = model.generate_content(situation_prompt)
-                    # JSONのクリーニングとパース
                     clean_text = response.text.replace("```json", "").replace("```", "").strip()
                     st.session_state.situations = json.loads(clean_text)
                     st.session_state.step = 1
@@ -105,19 +136,16 @@ elif st.session_state.step == 1:
     st.write("提示されるシチュエーションについて、あなたの本音で仕分けてください。「これが毎日続いたらきついな」と思うものを探します。")
     
     with st.form("sorting_form"):
-        # カテゴリA
         st.subheader("👥 A. 人と関わる場面")
         for idx, sit in enumerate(st.session_state.situations.get("A", [])):
             st.markdown(f"<div class='card-box'>📋 {sit}</div>", unsafe_allow_html=True)
             st.session_state.evaluations[f"A_{idx}"] = st.radio("この場面への気持ちは？", ["😊 苦にならない・普通", "😫 正直しんどい・避けたい"], key=f"ans_A_{idx}", horizontal=True)
         
-        # カテゴリB
         st.subheader("📊 B. 作業・ルールの場面")
         for idx, sit in enumerate(st.session_state.situations.get("B", [])):
             st.markdown(f"<div class='card-box'>📋 {sit}</div>", unsafe_allow_html=True)
             st.session_state.evaluations[f"B_{idx}"] = st.radio("この場面への気持ちは？", ["😊 苦にならない・普通", "😫 正直しんどい・避けたい"], key=f"ans_B_{idx}", horizontal=True)
             
-        # カテゴリC
         st.subheader("⏰ C. 環境・ペースの場面")
         for idx, sit in enumerate(st.session_state.situations.get("C", [])):
             st.markdown(f"<div class='card-box'>📋 {sit}</div>", unsafe_allow_html=True)
@@ -136,7 +164,6 @@ elif st.session_state.step == 2:
     st.progress(0.4)
     st.markdown("<div class='step-header'><h3>Step 2：絶対に避けたい「NG項目」と「未来への希望」</h3></div>", unsafe_allow_html=True)
     
-    # 前のステップで「😫 しんどい」と選んだものを抽出
     ng_pool = []
     for key, val in st.session_state.evaluations.items():
         if "😫" in val:
@@ -171,7 +198,6 @@ elif st.session_state.step == 2:
     if submit_step2:
         st.session_state.absolute_ngs = absolute_ngs
         
-        # --- APIを呼び出して、リフレーミングと「職種名を伏せたストーリー」を生成（プロンプト2） ---
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.5-flash')
         
@@ -210,11 +236,10 @@ elif st.session_state.step == 2:
                 response = model.generate_content(prompt2)
                 res_text = response.text
                 
-                # 末尾の職種名タグを取り出す処理
                 proposed_job = "一般事務" # デフォルト
                 if "[TARGET_JOB:" in res_text:
                     parts = res_text.split("[TARGET_JOB:")
-                    res_text = parts[0] # ストーリー部分だけ残す
+                    res_text = parts[0]
                     proposed_job = parts[1].replace("]", "").strip()
                 
                 st.session_state.ai_proposal = res_text
@@ -240,7 +265,6 @@ elif st.session_state.step == 3:
     st.write("この『1日のストーリー』を読んでみて、いかがでしたか？「これなら対人関係で過度に傷つくことなく、自分のやりたいスキルを活かして落ち着いて働けそうだな」と感じられたでしょうか？")
     
     if st.button("🌟 この働き方の本当の名前（職種名）と、事務職とのリアルな比較を見る"):
-        # --- APIを呼び出して、種明かしと一般的な事務職との比較表を生成（プロンプト3） ---
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.5-flash')
         
@@ -283,7 +307,6 @@ elif st.session_state.step == 4:
     
     st.success("✨ 先入観から離れたことで、本当に自分が安心できる、かつ新潟で求人のあるリアルな仕事への道が開けましたね！")
     
-    # ダウンロード用テキスト
     final_report = f"【仕事理解・マッチング診断レポート】\n\n{st.session_state.ai_proposal}\n\n--- 種明かしと解説 ---\n\n{st.session_state.ai_reveal}"
     st.download_button(
         label="📝 この仕事理解レポートを保存（ダウンロード）する",

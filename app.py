@@ -2,6 +2,21 @@ import streamlit as st
 import google.generativeai as genai
 import json
 
+# --- ページトップへ強制スクロールする魔法の関数 ---
+def scroll_to_top():
+    st.components.v1.html(
+        '''
+        <script>
+            var body = window.parent.document.querySelector(".main");
+            if (body) {
+                body.scrollTop = 0;
+            }
+            window.parent.scrollTo(0, 0);
+        </script>
+        ''',
+        height=0
+    )
+
 # --- ページ設定 ---
 st.set_page_config(page_title="わたしに合う働き方発見アシスタント", layout="wide")
 
@@ -47,6 +62,7 @@ if 'ai_reveal' not in st.session_state:
 # 【Step 0】プロファイリング（前提条件の取得）
 # ==================================================
 if st.session_state.step == 0:
+    scroll_to_top() # 画面上部へスクロール
     st.markdown("<div class='step-header'><h3>まずは、あなたの現在の状況を教えてください</h3></div>", unsafe_allow_html=True)
     st.write("適切なアドバイスのトーンを決めるための質問です。直感で選んでください。")
     
@@ -132,7 +148,6 @@ if st.session_state.step == 0:
             with st.spinner(f"{st.session_state.profile['name']}さんの経験に合わせて、30枚のシチュエーションカードを作成しています..."):
                 try:
                     response = model.generate_content(situation_prompt)
-                    # エラー対策：バッククォートの置き換えをシングルクォートで記述し、改行混入を防ぐ
                     clean_text = response.text.replace('```json', '').replace('```', '').strip()
                     st.session_state.situations = json.loads(clean_text)
                     st.session_state.step = 1
@@ -144,6 +159,7 @@ if st.session_state.step == 0:
 # 【Step 1】業務シチュエーションの直感仕分け
 # ==================================================
 elif st.session_state.step == 1:
+    scroll_to_top() # 画面上部へスクロール
     st.progress(0.2)
     st.markdown(f"<div class='step-header'><h3>Step 1：仕事の場面仕分け（これだけは避けたいこと）</h3></div>", unsafe_allow_html=True)
     st.write(f"{st.session_state.profile['name']}さんの本音で仕分けてください。「これが毎日続いたらきついな」と思うものを探します。")
@@ -176,6 +192,7 @@ elif st.session_state.step == 1:
 # 【Step 2】絶対NGの決定 ＆ 自由記述による本音と未来のスキル
 # ==================================================
 elif st.session_state.step == 2:
+    scroll_to_top() # 画面上部へスクロール
     st.progress(0.4)
     st.markdown("<div class='step-header'><h3>Step 2：絶対に避けたい「NG項目」と「未来への希望」</h3></div>", unsafe_allow_html=True)
     
@@ -268,6 +285,7 @@ elif st.session_state.step == 2:
 # 【Step 3】ハイブリッド・フィードバック ＆ 職種名ブラインド
 # ==================================================
 elif st.session_state.step == 3:
+    scroll_to_top() # 画面上部へスクロール
     st.progress(0.7)
     st.markdown("<div class='step-header'><h3>Step 3 ＆ 4：本音の翻訳 と 働き方の疑似体験ストーリー</h3></div>", unsafe_allow_html=True)
     
@@ -322,6 +340,7 @@ elif st.session_state.step == 3:
 # 【Step 4】具体的な職種名 ＆ ギャップ解消（クロージング）
 # ==================================================
 elif st.session_state.step == 4:
+    scroll_to_top() # 画面上部へスクロール
     st.progress(1.0)
     st.success(f"✨ 画面が切り替わりました。{st.session_state.profile['name']}さんへの最終レポートが完成しました！")
     
@@ -334,13 +353,15 @@ elif st.session_state.step == 4:
     st.info("💡 提示された「検索キーワード」をメモして、ハローワークの窓口や求人サイトで実際に検索してみましょう！")
     
     final_report = f"【仕事理解・マッチング診断レポート：{st.session_state.profile['name']}様】\n\n{st.session_state.ai_proposal}\n\n--- 職種名と希望職種との比較 ---\n\n{st.session_state.ai_reveal}"
+    
+    # --- ダウンロードするファイル名を日本語に変更 ---
     st.download_button(
         label="📝 この仕事理解レポートを保存（ダウンロード）する",
         data=final_report,
-        file_name="job_understanding_report.txt",
+        file_name="わたしに合う働き方発見レポート.txt",
         mime="text/plain"
     )
     
     st.markdown("---")
     st.write("※もう一度初めから診断を行う場合は、ブラウザを更新してください。")
-    st.link_button("🏠 C.HARIGOMA キャリア支援ポータルへ戻る", "[https://harigoma-career.streamlit.app/](https://harigoma-career.streamlit.app/)")
+    st.link_button("🏠 C.HARIGOMA キャリア支援ポータルへ戻る", "https://harigoma-career.streamlit.app/")

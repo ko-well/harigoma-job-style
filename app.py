@@ -286,4 +286,61 @@ elif st.session_state.step == 3:
         prompt3 = f"""
         求職者は、あなたが提案した「職種名を伏せた働き方のストーリー」を読み、その働き方に魅力を感じています。ここで具体的な職種名をお伝えし、現実的な一歩を踏み出す背中を押してください。
         
-        【
+        【求職者の情報】
+        ・お名前：{st.session_state.profile['name']}
+        ・現在希望している職種：{st.session_state.profile['desired_job']}
+        ・前段で提案した仕事の具体的な職種名：{st.session_state.proposed_job_title}
+        ・求職者のNG項目：{", ".join(st.session_state.absolute_ngs)}
+        
+        【出力構成】
+        1. 【働き方の具体的な職種名】:
+        ※注意：「いよいよ種明かしですが」といった唐突な表現は絶対に避け、「先ほどのストーリーで描かれていたお仕事は、具体的には〇〇という職種です」と自然にお伝えしてください。ネガティブな先入観を持たれないよう、現代的でポジティブな役割としての見出しを添えてください。
+        
+        2. 【「{st.session_state.profile['desired_job']}」との比較表】:
+        Markdownのテーブル形式（| 比較項目 | {st.session_state.profile['desired_job']} | 今回提案した職種 |）を用いて、求職者が希望している職種と、今回提案した職種を分かりやすく比較してください。
+        求職者の避けたいストレス（NG項目）の観点から、今回の提案職種のほうがなぜ安全で内定に近く、新潟の市場で現実的なのかを論理的に解説してください。
+        
+        3. 【ハローワーク等での検索キーワード】:
+        この仕事を探す際、ハローワークや求人サイトのフリーワード検索で役立つ具体的な「検索キーワード」を3〜5個、箇条書きで提示してください。（例：データ入力、もくもく作業、品質管理、サポート業務 など）
+        
+        4. 【次の一歩へのエール】:
+        「職種名という色眼鏡を外したことで、本当にあなたが安心して能力を発揮できる働き方が見つかりましたね」と温かく肯定し、やさしい言葉で締めくくってください。
+        
+        【制約事項】
+        ・HTMLタグ（<br>など）は絶対に使用しないでください。
+        """
+        with st.spinner("⏳ ご希望の職種との徹底比較データと、求人検索キーワードを作成しています..."):
+            try:
+                response = model.generate_content(prompt3)
+                st.session_state.ai_reveal = response.text
+                st.session_state.step = 4
+                st.rerun()
+            except Exception as e:
+                st.error(f"生成に失敗しました。エラー: {e}")
+
+# ==================================================
+# 【Step 4】具体的な職種名 ＆ ギャップ解消（クロージング）
+# ==================================================
+elif st.session_state.step == 4:
+    st.progress(1.0)
+    st.success(f"✨ 画面が切り替わりました。{st.session_state.profile['name']}さんへの最終レポートが完成しました！")
+    
+    st.markdown("<div class='step-header'><h3>Step 4：具体的な職種名と、これからの現実的な選択肢</h3></div>", unsafe_allow_html=True)
+    
+    st.markdown("<div class='story-box'>", unsafe_allow_html=True)
+    st.write(st.session_state.ai_reveal)
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.info("💡 提示された「検索キーワード」をメモして、ハローワークの窓口や求人サイトで実際に検索してみましょう！")
+    
+    final_report = f"【仕事理解・マッチング診断レポート：{st.session_state.profile['name']}様】\n\n{st.session_state.ai_proposal}\n\n--- 職種名と希望職種との比較 ---\n\n{st.session_state.ai_reveal}"
+    st.download_button(
+        label="📝 この仕事理解レポートを保存（ダウンロード）する",
+        data=final_report,
+        file_name="job_understanding_report.txt",
+        mime="text/plain"
+    )
+    
+    st.markdown("---")
+    st.write("※もう一度初めから診断を行う場合は、ブラウザを更新してください。")
+    st.link_button("🏠 C.HARIGOMA キャリア支援ポータルへ戻る", "[https://harigoma-career.streamlit.app/](https://harigoma-career.streamlit.app/)")
